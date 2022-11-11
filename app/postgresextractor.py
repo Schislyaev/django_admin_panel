@@ -68,7 +68,7 @@ class PostgresExtractor:
                         ORDER BY fw.modified 
                         """
             self.cursor.execute(query)
-            return dict(self.cursor.fetchmany(PAGE_SIZE))
+            return self.cursor.fetchmany(PAGE_SIZE)
 
         # Using special error handler from psycopg
         except (Exception, Error) as error:
@@ -77,20 +77,20 @@ class PostgresExtractor:
 
     def transform(self, data):
 
-        role_list = lambda role: [k.get('person_name') for k in data[7] if k.get('person_role') == role]    #todo: использовать dict factory
+        role_list = lambda role: [k.get('person_name') for k in data['persons'] if k.get('person_role') == role]
 
         res = {
                 'film_id': data['id'],
-                'title': data[1],
-                'description': data[2],
-                'rating': data[3],
-                'type': data[4],
-                'created': data[5],
-                'modified': data[6],
+                'title': data['title'],
+                'description': data['description'],
+                'rating': data['rating'],
+                'type': data['type'],
+                'created': data['created'],
+                'modified': data['modified'],
                 'actors': role_list('actor'),
                 'directors': role_list('director'),
                 'writers': role_list('writer'),
-                'genres': [k for k in data[8]]
+                'genres': [k for k in data['genres']]
         }
 
         return res

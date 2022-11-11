@@ -21,7 +21,6 @@ DATA_TABLES = ('film_work', 'genre', 'person', 'genre_film_work', 'person_film_w
 def main():
     """Connect to SQLite and Postgres, extract from sqlite and load to postgres."""
     load_dotenv('config/.env')
-    d = {}
 
     db_name = os.environ.get('PG_DB_NAME')
     user = os.environ.get('DB_USER')
@@ -32,7 +31,7 @@ def main():
     dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
         pg = PostgresExtractor(pg_conn)
-        res = pg.extract()
+        res = pg.extract()[0]
         print(*res, sep='\n')
 
         res = pg.transform(res)
