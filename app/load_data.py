@@ -32,11 +32,11 @@ def main():
     dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
         pg = PostgresExtractor(pg_conn)
-        res = pg.extract()[0]
+        res = pg.extract()
+        print(*res, sep='\n')
 
-
-
-        print(d, sep='\n')
+        res = pg.transform(res)
+        print(res)
 
 
 if __name__ == '__main__':

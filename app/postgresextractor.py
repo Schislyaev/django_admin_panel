@@ -7,7 +7,7 @@ Author: Petr Schislyaev
 Date: 16/10/2023
 """
 import logging
-from psycopg2 import Error
+from psycopg2 import Error, extras
 from psycopg2.extensions import connection as _connection
 
 
@@ -24,7 +24,7 @@ class PostgresExtractor:
             conn: _connection
         """
         self.conn = conn
-        self.cursor = conn.cursor()
+        self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
 
     def extract(self):
         """
@@ -65,10 +65,10 @@ class PostgresExtractor:
                         LEFT JOIN content.genre g ON g.id = gfw.genre_id
 --                         WHERE fw.modified > '<время>'
                         GROUP BY fw.id
-                        ORDER BY fw.modified    
-                                            """
+                        ORDER BY fw.modified 
+                        """
             self.cursor.execute(query)
-            return self.cursor.fetchmany(PAGE_SIZE)
+            return dict(self.cursor.fetchmany(PAGE_SIZE))
 
         # Using special error handler from psycopg
         except (Exception, Error) as error:
@@ -77,15 +77,21 @@ class PostgresExtractor:
 
     def transform(self, data):
 
+        role_list = lambda role: [k.get('person_name') for k in data[7] if k.get('person_role') == role]    #todo: использовать dict factory
+
         res = {
-               'film_id': data[0],
-               'title': data[1],
-               'description': data[2],
-               'rating': data[3],
-               'type': data[4],
-               'created': data[5],
-               'modified': data[6],
-               'name_role': [{i['person_name']: i['person_role']} for i in data[7]],
-               'genres': [k for k in data[8]]
+                'film_id': data['id'],
+                'title': data[1],
+                'description': data[2],
+                'rating': data[3],
+                'type': data[4],
+                'created': data[5],
+                'modified': data[6],
+                'actors': role_list('actor'),
+                'directors': role_list('director'),
+                'writers': role_list('writer'),
+                'genres': [k for k in data[8]]
         }
+
+        return res
 
