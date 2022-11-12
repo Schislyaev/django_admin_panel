@@ -32,8 +32,6 @@ def main():
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
         pg = PostgresExtractor(pg_conn)
         res = pg.extract()[0]
-        print(*res, sep='\n')
-
         res = pg.transform(res)
         print(res)
 

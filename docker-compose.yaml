@@ -30,5 +30,15 @@ services:
       - service
     ports:
       - "80:80"
+  es:
+    image: elasticsearch:7.9.1
+    ports:
+      - "9200:9200"
+    env_file:
+      - app/config/.env
+    environment:
+      - host=DB_HOST
+      - discovery.type=single-node
+
 volumes:
   volume_static:
