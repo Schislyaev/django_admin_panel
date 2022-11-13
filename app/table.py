@@ -18,8 +18,8 @@ class ElasticIndex(BaseModel):
     imdb_rating: float | None
     genre: Optional[list]
     title: str
-    description: str | None
-    director: str | None
+    description: Optional[str | None]
+    director: list
     actors_names: Optional[list[str]]
     writers_names: Optional[list[str]]
     actors: Optional[list[Dict]]

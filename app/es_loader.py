@@ -44,7 +44,8 @@ class ESLoader:
         finally:
             return created
 
-    def generate_actions(self, list_of_data: list):
+    @staticmethod
+    def generate_actions(list_of_data: list):
 
         record = None
         for elem in list_of_data:
@@ -54,7 +55,7 @@ class ESLoader:
                 "genre": elem['genres'],
                 "title": elem['title'],
                 "description": elem['description'],
-                "director": elem['directors'][0]['name'] if elem['directors'] else None,
+                "director": [elem['directors'][0]['name']] if elem['directors'] else [],
                 "actors_names": [actor['name'] for actor in elem['actors']],
                 "writers_names": [writer['name'] for writer in elem['writers']],
                 "actors": elem['actors'],
