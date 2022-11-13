@@ -40,7 +40,7 @@
     }
   },
   "mappings": {
-    "dynamic": "strict",
+    "dynamic": "true",
     "properties": {
       "id": {
         "type": "keyword"

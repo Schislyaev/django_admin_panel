@@ -11,11 +11,10 @@ import os
 
 import psycopg2
 from dotenv import load_dotenv
+from psycopg2 import extras
 
 from postgresextractor import PostgresExtractor
-
-
-DATA_TABLES = ('film_work', 'genre', 'person', 'genre_film_work', 'person_film_work')
+from es_loader import ESLoader
 
 
 def main():
@@ -28,12 +27,19 @@ def main():
     host = os.environ.get('DB_HOST')
     port = os.environ.get('DB_PORT')
 
+    PAGE_SIZE = 500
+
     dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
+    es = ESLoader()
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
         pg = PostgresExtractor(pg_conn)
-        res = pg.extract()[0]
-        res = pg.transform(res)
-        print(res)
+        pg.extract()
+        i = 0
+        while data := pg.cursor.fetchmany(PAGE_SIZE):
+            res = pg.transform(data)
+            es.create_or_update_record(res)
+            i += 1
+            print(i)
 
 
 if __name__ == '__main__':
