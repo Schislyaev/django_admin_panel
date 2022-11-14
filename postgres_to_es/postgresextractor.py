@@ -30,14 +30,14 @@ class PostgresExtractor:
         self.conn = conn
         self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
 
-    def extract(self):
+    def extract(self, state):
         """
-        film_work table.
+        Extract from PG.
 
-        All the other table follow the same logic
+        Get data with condition of state
 
         Args:
-            data: table list
+            state: table list
         """
 
         try:
