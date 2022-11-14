@@ -1,9 +1,12 @@
 import abc
-import json
 
 from redis import Redis
+from json import JSONDecoder, JSONEncoder
 
 from typing import Any, Optional
+
+de = JSONDecoder()
+en = JSONEncoder()
 
 adapter = Redis(
                 host='127.0.0.1',
@@ -18,25 +21,26 @@ adapter = Redis(
 class BaseStorage:
     @abc.abstractmethod
     def save_state(self, state: dict) -> None:
-        """Сохранить состояние в постоянное хранилище"""
         pass
 
     @abc.abstractmethod
     def retrieve_state(self) -> dict:
-        """Загрузить состояние локально из постоянного хранилища"""
         pass
 
 
 class RedisStorage(BaseStorage):
-    def __init__(self, redis_adapter: Redis):
+    def __init__(self, redis_adapter):
         self.redis = redis_adapter
-        self.redis.set('data', json.dumps({}))
 
     def save_state(self, state: dict) -> None:
-        self.redis.set('data', json.dumps(state))
+        self.redis.set('data', en.encode(state))
 
-    def retrieve_state(self) -> dict:
-        return json.loads(self.redis.get('data'))
+    def retrieve_state(self) -> dict | None:
+        res = self.redis.get('data')
+        if res == 'null' or res is None:
+            self.redis.set('data', en.encode(None))
+            return None
+        return de.decode(res)
 
 
 class State:
@@ -48,17 +52,23 @@ class State:
 
     def __init__(self, storage: RedisStorage):
         self.storage = storage
+        self.storage.retrieve_state()
 
     def set_state(self, key: str, value: Any) -> None:
         """Установить состояние для определённого ключа"""
         state = self.storage.retrieve_state()
-        state[key] = value
-        self.storage.save_state(state)
+        try:
+            state[key] = value
+        except TypeError:
+            self.storage.save_state({key: value})
 
     def get_state(self, key: str) -> Any:
         """Получить состояние по определённому ключу"""
-        state = self.storage.retrieve_state()
-        return state.get(key)
+        try:
+            state = self.storage.retrieve_state()
+            return state.get(key)
+        except AttributeError:
+            return None
 
 
 def main():
@@ -70,4 +80,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except SystemExit:
+        print('bye')
+    finally:
+        print('k bye')

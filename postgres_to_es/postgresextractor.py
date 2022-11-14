@@ -30,7 +30,7 @@ class PostgresExtractor:
         self.conn = conn
         self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
 
-    def extract(self, state):
+    def extract(self):
         """
         Extract from PG.
 

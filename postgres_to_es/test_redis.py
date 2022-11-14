@@ -3,9 +3,7 @@ import re
 import sys
 from json import JSONDecodeError
 
-
-# TODO: здесь вставьте import для своих файлов State и RedisStorage
-from radis_storage import RedisStorage, State
+from redis_storage import RedisStorage, State
 
 
 class FakeRedis:
@@ -78,11 +76,11 @@ def test_error_on_corrupted_data():
     assert False
 
 
-def run_tests(pattern='test_*'):
-    search_pattern = re.compile(pattern)
-    for name, func in inspect.getmembers(sys.modules[__name__]):
-        if search_pattern.match(name):
-            func()
-
-
-run_tests()
+# def run_tests(pattern='test_*'):
+#     search_pattern = re.compile(pattern)
+#     for name, func in inspect.getmembers(sys.modules[__name__]):
+#         if search_pattern.match(name):
+#             func()
+#
+#
+# run_tests()
