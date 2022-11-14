@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 from postgresextractor import PostgresExtractor
 from es_loader import ESLoader
+from redis_storage import RedisStorage
 
 
 def main():
@@ -31,7 +32,7 @@ def main():
     es = ESLoader()
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
         pg = PostgresExtractor(pg_conn)
-        pg.extract()
+        pg.extract('2021-06-16 20:14:09.271615 +00:00')
         i = 0
         while data := pg.cursor.fetchmany(PAGE_SIZE):
             res = pg.transform(data)

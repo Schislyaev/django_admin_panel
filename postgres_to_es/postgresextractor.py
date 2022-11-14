@@ -11,6 +11,7 @@ import os
 from psycopg2 import Error, extras
 from psycopg2.extensions import connection as _connection
 from dotenv import load_dotenv
+from datetime import datetime
 
 from table import ElasticIndex
 
@@ -30,14 +31,14 @@ class PostgresExtractor:
         self.conn = conn
         self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
 
-    def extract(self):
+    def extract(self, date: str):
         """
         Extract from PG.
 
-        Get data with condition of state
+        Get data with condition of date
 
         Args:
-            state: table list
+            date: date to query
         """
 
         try:
@@ -67,9 +68,9 @@ class PostgresExtractor:
                         LEFT JOIN content.person p ON p.id = pfw.person_id
                         LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
                         LEFT JOIN content.genre g ON g.id = gfw.genre_id
---                         WHERE fw.modified > '<время>'
+                        WHERE fw.modified > '{date}'
                         GROUP BY fw.id
-                        ORDER BY fw.modified 
+                        ORDER BY fw.modified desc
                         """
             self.cursor.execute(query)
             # return self.cursor.fetchmany(PAGE_SIZE)
