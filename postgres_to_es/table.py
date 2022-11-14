@@ -25,3 +25,7 @@ class ElasticIndex(BaseModel):
     actors: Optional[list[Dict]]
     writers: Optional[list[Dict]]
 
+    @classmethod
+    @validator('director')
+    def validate_director(cls, value_to_validate):
+        return value_to_validate if value_to_validate else []

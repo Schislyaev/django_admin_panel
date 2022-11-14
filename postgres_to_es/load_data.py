@@ -3,7 +3,7 @@ Yandex.Practicum sprint 1.
 Main section
 
 Author: Petr Schislyaev
-Date: 16/10/2023
+Date: 14/11/2022
 """
 
 import contextlib
@@ -11,7 +11,6 @@ import os
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2 import extras
 
 from postgresextractor import PostgresExtractor
 from es_loader import ESLoader
@@ -19,15 +18,14 @@ from es_loader import ESLoader
 
 def main():
     """Connect to SQLite and Postgres, extract from sqlite and load to postgres."""
-    load_dotenv('config/.env')
+    load_dotenv('../app/config/.env')
 
     db_name = os.environ.get('PG_DB_NAME')
     user = os.environ.get('DB_USER')
     password = os.environ.get('DB_PASSWORD')
     host = os.environ.get('DB_HOST')
     port = os.environ.get('DB_PORT')
-
-    PAGE_SIZE = 500
+    PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 
     dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
     es = ESLoader()

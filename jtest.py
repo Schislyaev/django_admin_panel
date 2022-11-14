@@ -33,7 +33,7 @@ class JsonFileStorage(BaseStorage):
                         return {}
         except Exception as ex:
             if ex.errno == 2:
-                f = open('app/data.json', 'a', encoding='utf-8')
+                f = open('postgres_to_es/data.json', 'a', encoding='utf-8')
                 f.close
                 return {}
 

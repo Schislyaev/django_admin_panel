@@ -1,17 +1,21 @@
 """
-Yandex.Practicum sprint 1.
+Yandex.Practicum sprint 3.
 
 Saving to Postgres logic
 
 Author: Petr Schislyaev
-Date: 16/10/2023
+Date: 14/11/2022
 """
 import logging
+import os
 from psycopg2 import Error, extras
 from psycopg2.extensions import connection as _connection
+from dotenv import load_dotenv
 
+from table import ElasticIndex
 
-PAGE_SIZE = 500
+load_dotenv('../app/config/.env')
+PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 
 
 class PostgresExtractor:
@@ -86,19 +90,34 @@ class PostgresExtractor:
             role_list = lambda role: [{'id': k.get('person_id'), 'name': k.get('person_name')} for k in elem['persons']
                                       if k.get('person_role') == role]
 
-            res.append({
-                    'film_id': elem['id'],
-                    'title': elem['title'],
-                    'description': elem['description'],
-                    'rating': elem['rating'],
-                    'type': elem['type'],
-                    'created': elem['created'],
-                    'modified': elem['modified'],
-                    'actors': role_list('actor'),
-                    'directors': role_list('director'),
-                    'writers': role_list('writer'),
-                    'genres': [k for k in elem['genres']]
-            })
+            pydantic_transform = ElasticIndex(
+                id=elem['id'],
+                imdb_rating=elem['rating'],
+                genre=[k for k in elem['genres']],
+                title=elem['title'],
+                description=elem['description'],
+                director=[director['name'] for director in role_list('director')],
+                actors_names=[actor['name'] for actor in role_list('actor')],
+                writers_names=[writer['name'] for writer in role_list('writer')],
+                actors=role_list('actor'),
+                writers=role_list('writer')
+            )
+
+            # res.append({
+            #         'film_id': elem['id'],
+            #         'title': elem['title'],
+            #         'description': elem['description'],
+            #         'rating': elem['rating'],
+            #         'type': elem['type'],
+            #         'created': elem['created'],
+            #         'modified': elem['modified'],
+            #         'actors': role_list('actor'),
+            #         'directors': role_list('director'),
+            #         'writers': role_list('writer'),
+            #         'genres': [k for k in elem['genres']]
+            # })
+
+            res.append(pydantic_transform)
 
         return res
 
