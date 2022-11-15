@@ -48,8 +48,8 @@ class PostgresExtractor:
             self.cursor.execute("""SELECT MIN(modified) FROM content.film_work""")
             min_modified_date = self.cursor.fetchone()
             modified_date = self.state.get_state('modified')
-            # Уменьшаю минимальное время на одну миллисекунды, что бы учесть оригинальное минимальное время при строгой выборке
-            modified_date = modified_date if modified_date else min_modified_date[0].replace(microsecond=min_modified_date[0].microsecond - 2)
+            # Уменьшаю минимальное время на одну миллисекунду, что бы учесть оригинальное минимальное время при строгой выборке
+            modified_date = modified_date if modified_date else min_modified_date[0].replace(microsecond=min_modified_date[0].microsecond - 1)
 
             query = f"""
                         SELECT

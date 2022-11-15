@@ -1,4 +1,5 @@
 import abc
+from datetime import datetime
 
 from redis import Redis
 from json import JSONDecoder, JSONEncoder
@@ -58,9 +59,11 @@ class State:
         """Установить состояние для определённого ключа"""
         state = self.storage.retrieve_state()
         try:
-            self.storage.save_state(key, str(value))
+            state[key] = value if type(value) is not datetime else str(value)
+            self.storage.save_state(state)
         except TypeError:
-            self.storage.save_state({key: str(value)})
+            value = value if type(value) is not datetime else str(value)
+            self.storage.save_state({key: value})
 
     def get_state(self, key: str) -> Any:
         """Получить состояние по определённому ключу"""
