@@ -2,7 +2,7 @@ import logging
 import json
 import os
 
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import Elasticsearch, helpers, ElasticsearchException
 from dotenv import load_dotenv
 
 from table import ElasticIndex
@@ -10,6 +10,7 @@ from table import ElasticIndex
 load_dotenv('../app/config/.env')
 PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 INDEX_NAME = os.environ.get('INDEX_NAME')
+HOST = os.environ.get('DB_HOST_LOCAL')
 
 
 class ESLoader:
@@ -24,12 +25,14 @@ class ESLoader:
     @staticmethod
     def connect_elasticsearch():
         _es = None
-        _es = Elasticsearch([{'host': '127.0.0.1', 'port': 9200}])
-        if _es.ping():
-            print('Connected elastic')
-        else:
-            print('Could not connect elastic')
-            logging.basicConfig(level=logging.ERROR)
+        try:
+            _es = Elasticsearch([{'host': HOST, 'port': 9200}])
+            if _es.ping():
+                print('Connected elastic')
+            else:
+                raise ElasticsearchException
+        except ElasticsearchException as er:
+            raise er
         return _es
 
     def create_index(self):
@@ -42,7 +45,7 @@ class ESLoader:
                 created = True
             else:
                 print('Already exists')
-        except Exception as er:
+        except ElasticsearchException as er:
             print(str(er))
         finally:
             return created
@@ -72,3 +75,6 @@ class ESLoader:
                             index=self.index,
                             actions=self.generate_actions(record),
         )
+
+    def close(self):
+        self.es.transport.connection_pool.close()
