@@ -58,9 +58,9 @@ class State:
         """Установить состояние для определённого ключа"""
         state = self.storage.retrieve_state()
         try:
-            state[key] = value
+            self.storage.save_state(key, str(value))
         except TypeError:
-            self.storage.save_state({key: value})
+            self.storage.save_state({key: str(value)})
 
     def get_state(self, key: str) -> Any:
         """Получить состояние по определённому ключу"""

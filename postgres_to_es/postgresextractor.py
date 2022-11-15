@@ -12,8 +12,10 @@ from psycopg2 import Error, extras
 from psycopg2.extensions import connection as _connection
 from dotenv import load_dotenv
 from datetime import datetime
+from redis import Redis
 
 from table import ElasticIndex
+from redis_storage import RedisStorage, State
 
 load_dotenv('../app/config/.env')
 PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
@@ -21,7 +23,7 @@ PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 
 class PostgresExtractor:
 
-    def __init__(self, conn: _connection):
+    def __init__(self, conn: _connection, state: State):
         """
         Organize input fields through pydentic mechanics.
 
@@ -30,8 +32,9 @@ class PostgresExtractor:
         """
         self.conn = conn
         self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
+        self.state = state
 
-    def extract(self, date: str):
+    def extract(self):
         """
         Extract from PG.
 
@@ -42,6 +45,11 @@ class PostgresExtractor:
         """
 
         try:
+            self.cursor.execute("""SELECT MIN(modified) FROM content.film_work""")
+            min_modified_date = self.cursor.fetchone()
+            modified_date = self.state.get_state('modified')
+            # Уменьшаю минимальное время на одну миллисекунды, что бы учесть оригинальное минимальное время при строгой выборке
+            modified_date = modified_date if modified_date else min_modified_date[0].replace(microsecond=min_modified_date[0].microsecond - 2)
 
             query = f"""
                         SELECT
@@ -68,22 +76,17 @@ class PostgresExtractor:
                         LEFT JOIN content.person p ON p.id = pfw.person_id
                         LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
                         LEFT JOIN content.genre g ON g.id = gfw.genre_id
-                        WHERE fw.modified > '{date}'
+                        WHERE fw.modified > '{modified_date}'
                         GROUP BY fw.id
-                        ORDER BY fw.modified desc
+                        ORDER BY fw.modified
                         """
             self.cursor.execute(query)
-            # return self.cursor.fetchmany(PAGE_SIZE)
 
         # Using special error handler from psycopg
         except (Exception, Error) as error:
             logging.exception(error)
 
-    # def fetch_data(self):
-    #     while data := self.cursor.fetchmany(PAGE_SIZE):
-    #         yield data
-
-    def transform(self, data):
+    def transform(self, data: list):
 
         res = []
         for elem in data:
@@ -104,19 +107,8 @@ class PostgresExtractor:
                 writers=role_list('writer')
             )
 
-            # res.append({
-            #         'film_id': elem['id'],
-            #         'title': elem['title'],
-            #         'description': elem['description'],
-            #         'rating': elem['rating'],
-            #         'type': elem['type'],
-            #         'created': elem['created'],
-            #         'modified': elem['modified'],
-            #         'actors': role_list('actor'),
-            #         'directors': role_list('director'),
-            #         'writers': role_list('writer'),
-            #         'genres': [k for k in elem['genres']]
-            # })
+            # отслеживаем наиболее позднюю дату - кладем ее в редис
+            self.state.set_state('modified', elem['modified'])
 
             res.append(pydantic_transform)
 

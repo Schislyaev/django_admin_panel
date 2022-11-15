@@ -8,13 +8,14 @@ Date: 14/11/2022
 
 import contextlib
 import os
-
 import psycopg2
+
 from dotenv import load_dotenv
+from redis import Redis
 
 from postgresextractor import PostgresExtractor
 from es_loader import ESLoader
-from redis_storage import RedisStorage
+from redis_storage import RedisStorage, State
 
 
 def main():
@@ -30,9 +31,21 @@ def main():
 
     dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
     es = ESLoader()
+
+    adapter = Redis(
+        host='127.0.0.1',
+        port=6379,
+        db=0,
+        password=None,
+        socket_timeout=None,
+        decode_responses=True
+    )
+    storage = RedisStorage(adapter)
+    state = State(storage)
+
     with contextlib.closing(psycopg2.connect(**dsl)) as pg_conn:
-        pg = PostgresExtractor(pg_conn)
-        pg.extract('2021-06-16 20:14:09.271615 +00:00')
+        pg = PostgresExtractor(pg_conn, state)
+        pg.extract()
         i = 0
         while data := pg.cursor.fetchmany(PAGE_SIZE):
             res = pg.transform(data)
