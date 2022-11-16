@@ -13,6 +13,7 @@ import psycopg2
 import backoff
 
 from psycopg2 import Error
+from psycopg2.extensions import connection
 from dotenv import load_dotenv
 from redis import Redis, ConnectionError
 from elasticsearch import ElasticsearchException
@@ -20,6 +21,7 @@ from elasticsearch import ElasticsearchException
 from postgresextractor import PostgresExtractor
 from es_loader import ESLoader
 from redis_storage import RedisStorage, State
+from util import sleep
 
 # logging setup
 logger = logging.getLogger(__name__)
@@ -30,6 +32,8 @@ formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
 
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+timeout = int(os.environ.get('TIMEOUT'))    # Время повтора сервиса в секундах
 
 
 class ETL:
@@ -52,7 +56,7 @@ class ETL:
         ConnectionError,
         logger=logger
     )
-    def redis_connect(self):
+    def redis_connect(self) -> State | Exception:
         try:
             adapter = Redis(
                 host=self.host_local,
@@ -74,7 +78,7 @@ class ETL:
         Error,
         logger=logger
     )
-    def postgres_connect(self):
+    def postgres_connect(self) -> connection | Exception:
         try:
             pg = psycopg2.connect(**self.dsl)
             return pg
@@ -88,7 +92,7 @@ class ETL:
         ElasticsearchException,
         logger=logger
     )
-    def es_connect(self):
+    def es_connect(self) -> ESLoader | Exception:
         try:
             es = ESLoader()
             return es
@@ -96,18 +100,16 @@ class ETL:
             logger.exception(er)
             raise er
 
+    @sleep(timeout)
     def main(self):
 
         with contextlib.closing(self.postgres_connect()) as pg_conn, contextlib.closing(self.es_connect()) as es_conn:
 
             pg = PostgresExtractor(pg_conn, self.state)
             pg.extract()
-            i = 0
             while data := pg.cursor.fetchmany(self.PAGE_SIZE):
                 res = pg.transform(data)
                 es_conn.load(res)
-                i += 1
-                print(i)
 
 
 def main():

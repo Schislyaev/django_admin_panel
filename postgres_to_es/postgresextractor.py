@@ -42,7 +42,7 @@ class PostgresExtractor:
         self.cursor = conn.cursor(cursor_factory=extras.DictCursor)
         self.state = state
 
-    def extract(self):
+    def extract(self) -> None:
         """
         Extract from PG.
 
@@ -94,7 +94,7 @@ class PostgresExtractor:
         except (Exception, Error) as error:
             logger.exception(error)
 
-    def transform(self, data: list):
+    def transform(self, data: list) -> list:
 
         res = []
         for elem in data:
@@ -115,7 +115,7 @@ class PostgresExtractor:
                 writers=role_list('writer')
             )
 
-            # отслеживаем наиболее позднюю дату - кладем ее в редис
+            # отслеживаем дату - кладем ее в редис
             self.state.set_state('modified', elem['modified'])
 
             res.append(pydantic_transform)

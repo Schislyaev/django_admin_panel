@@ -50,7 +50,7 @@ class ESLoader:
             raise er
         return _es
 
-    def create_index(self):
+    def create_index(self) -> bool:
         created = False
 
         try:
@@ -66,7 +66,8 @@ class ESLoader:
             return created
 
     @staticmethod
-    def generate_actions(list_of_data: list[ElasticIndex]):
+    def generate_actions(list_of_data: list[ElasticIndex]) -> dict:
+        """Func for bulk process."""
 
         for elem in list_of_data:
             record = {
@@ -92,4 +93,5 @@ class ESLoader:
         )
 
     def close(self):
+        """Func for correct closing."""
         self.es.transport.connection_pool.close()
