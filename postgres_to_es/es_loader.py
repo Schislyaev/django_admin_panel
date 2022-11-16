@@ -12,13 +12,27 @@ PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 INDEX_NAME = os.environ.get('INDEX_NAME')
 HOST = os.environ.get('DB_HOST_LOCAL')
 
+# logging setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+
+handler = logging.FileHandler(f"logs/{__name__}.log", mode='w')
+formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 
 class ESLoader:
     def __init__(self):
         self.index = INDEX_NAME
 
-        with open('data.json') as file:
-            self.settings = json.load(file)
+        try:
+            with open('data.json') as file:
+                self.settings = json.load(file)
+        except Exception as er:
+            logger.exception(er)
+
         self.es = self.connect_elasticsearch()
         self.create_index()
 
@@ -32,6 +46,7 @@ class ESLoader:
             else:
                 raise ElasticsearchException
         except ElasticsearchException as er:
+            logger.exception(er)
             raise er
         return _es
 
@@ -46,7 +61,7 @@ class ESLoader:
             else:
                 print('Already exists')
         except ElasticsearchException as er:
-            print(str(er))
+            logger.exception(er)
         finally:
             return created
 
@@ -68,7 +83,7 @@ class ESLoader:
             }
             yield {"_id": elem.id, "_source": record}
 
-    def create_or_update_record(self, record: list):
+    def load(self, record: list):
 
         resp = helpers.bulk(
                             client=self.es,

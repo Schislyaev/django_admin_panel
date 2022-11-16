@@ -1,5 +1,5 @@
 """
-Yandex.Practicum sprint 1.
+Yandex.Practicum sprint 3.
 Main section
 
 Author: Petr Schislyaev
@@ -21,6 +21,16 @@ from postgresextractor import PostgresExtractor
 from es_loader import ESLoader
 from redis_storage import RedisStorage, State
 
+# logging setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handler = logging.FileHandler(f"logs/{__name__}.log", mode='w')
+formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 
 class ETL:
     def __init__(self):
@@ -34,7 +44,6 @@ class ETL:
         self.PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 
         self.dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
-        # self.es = ESLoader()
 
         adapter = Redis(
             host='127.0.0.1',
@@ -49,39 +58,41 @@ class ETL:
 
     @backoff.on_exception(
         backoff.expo,
-        Error
+        Error,
+        logger=logger
     )
     def postgres_connect(self):
         try:
             pg = psycopg2.connect(**self.dsl)
-
             return pg
+
         except Error as er:
-            logging.error(er)
+            logger.exception(er)
             raise er
 
     @backoff.on_exception(
         backoff.expo,
-        ElasticsearchException
+        ElasticsearchException,
+        logger=logger
     )
     def es_connect(self):
         try:
             es = ESLoader()
             return es
         except ElasticsearchException as er:
-            logging.error(er)
+            logger.exception(er)
             raise er
 
     def main(self):
 
-        with contextlib.closing(self.es_connect()) as es_conn, contextlib.closing(self.postgres_connect()) as pg_conn:
+        with contextlib.closing(self.postgres_connect()) as pg_conn, contextlib.closing(self.es_connect()) as es_conn:
 
             pg = PostgresExtractor(pg_conn, self.state)
             pg.extract()
             i = 0
             while data := pg.cursor.fetchmany(self.PAGE_SIZE):
                 res = pg.transform(data)
-                es_conn.create_or_update_record(res)
+                es_conn.load(res)
                 i += 1
                 print(i)
 

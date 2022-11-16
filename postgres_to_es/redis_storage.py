@@ -75,17 +75,9 @@ class State:
 
 
 def main():
-    storage = RedisStorage(adapter)
-    s = State(storage)
-
-    s.set_state('key', 123)
-    print(s.get_state('key'))
+    pass
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except SystemExit:
-        print('bye')
-    finally:
-        print('k bye')
+    main()
+

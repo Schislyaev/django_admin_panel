@@ -11,14 +11,22 @@ import os
 from psycopg2 import Error, extras
 from psycopg2.extensions import connection as _connection
 from dotenv import load_dotenv
-from datetime import datetime
-from redis import Redis
 
 from table import ElasticIndex
 from redis_storage import RedisStorage, State
 
 load_dotenv('../app/config/.env')
 PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
+
+# logging setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handler = logging.FileHandler(f"logs/{__name__}.log", mode='w')
+formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 class PostgresExtractor:
@@ -84,7 +92,7 @@ class PostgresExtractor:
 
         # Using special error handler from psycopg
         except (Exception, Error) as error:
-            logging.exception(error)
+            logger.exception(error)
 
     def transform(self, data: list):
 
