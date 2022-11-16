@@ -1,22 +1,13 @@
 import abc
-from datetime import datetime
+import logging
 
-from redis import Redis
+from datetime import datetime
 from json import JSONDecoder, JSONEncoder
 
-from typing import Any, Optional
+from typing import Any
 
 de = JSONDecoder()
 en = JSONEncoder()
-
-adapter = Redis(
-                host='127.0.0.1',
-                port=6379,
-                db=0,
-                password=None,
-                socket_timeout=None,
-                decode_responses=True
-)
 
 
 class BaseStorage:

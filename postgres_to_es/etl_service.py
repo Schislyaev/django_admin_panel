@@ -14,7 +14,7 @@ import backoff
 
 from psycopg2 import Error
 from dotenv import load_dotenv
-from redis import Redis
+from redis import Redis, ConnectionError
 from elasticsearch import ElasticsearchException
 
 from postgresextractor import PostgresExtractor
@@ -39,22 +39,35 @@ class ETL:
         db_name = os.environ.get('PG_DB_NAME')
         user = os.environ.get('DB_USER')
         password = os.environ.get('DB_PASSWORD')
-        host = os.environ.get('DB_HOST_LOCAL')
+        self.host_local = os.environ.get('DB_HOST_LOCAL')
         port = os.environ.get('DB_PORT')
         self.PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
 
-        self.dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': host, 'port': port}
+        self.dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': self.host_local, 'port': port}
 
-        adapter = Redis(
-            host='127.0.0.1',
-            port=6379,
-            db=0,
-            password=None,
-            socket_timeout=None,
-            decode_responses=True
-        )
-        storage = RedisStorage(adapter)
-        self.state = State(storage)
+        self.state = self.redis_connect()
+
+    @backoff.on_exception(
+        backoff.expo,
+        ConnectionError,
+        logger=logger
+    )
+    def redis_connect(self):
+        try:
+            adapter = Redis(
+                host=self.host_local,
+                port=6379,
+                db=0,
+                password=None,
+                socket_timeout=None,
+                decode_responses=True
+            )
+            storage = RedisStorage(adapter)
+            state = State(storage)
+            return state
+        except ConnectionError as er:
+            logger.exception(er)
+            raise er
 
     @backoff.on_exception(
         backoff.expo,
