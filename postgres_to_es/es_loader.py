@@ -1,26 +1,20 @@
-import logging
 import json
-import os
+import config
 
-from elasticsearch import Elasticsearch, helpers, ElasticsearchException
 from dotenv import load_dotenv
-
+from elasticsearch import Elasticsearch, ElasticsearchException, helpers
 from table import ElasticIndex
+from util import log
+from redis_storage import State
 
 load_dotenv('../app/config/.env')
-PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
-INDEX_NAME = os.environ.get('INDEX_NAME')
-HOST = os.environ.get('DB_HOST_LOCAL')
+PAGE_SIZE = config.PAGE_SIZE
+INDEX_NAME = config.INDEX_NAME
+HOST = config.HOST_LOCAL
+PORT = config.ELASTIC_PORT
 
 # logging setup
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
-
-handler = logging.FileHandler(f"logs/{__name__}.log", mode='w')
-formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
-
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger = log(__name__)
 
 
 class ESLoader:
@@ -28,10 +22,12 @@ class ESLoader:
         self.index = INDEX_NAME
 
         try:
-            with open('data.json') as file:
+            with open('film_index.json') as file:
                 self.settings = json.load(file)
         except Exception as er:
             logger.exception(er)
+            logger.error('Не удалось загрузить схему для ES')
+            raise er
 
         self.es = self.connect_elasticsearch()
         self.create_index()
@@ -40,9 +36,9 @@ class ESLoader:
     def connect_elasticsearch():
         _es = None
         try:
-            _es = Elasticsearch([{'host': HOST, 'port': 9200}])
+            _es = Elasticsearch([{'host': HOST, 'port': PORT}])
             if _es.ping():
-                print('Connected elastic')
+                logger.info('Connected elastic')
             else:
                 raise ElasticsearchException
         except ElasticsearchException as er:
@@ -56,14 +52,13 @@ class ESLoader:
         try:
             if not self.es.indices.exists(self.index):
                 self.es.indices.create(index=self.index, ignore=400, body=self.settings)
-                print('Index created')
+                logger.info('Index created')
                 created = True
             else:
-                print('Already exists')
+                logger.info('Already exists')
         except ElasticsearchException as er:
             logger.exception(er)
-        finally:
-            return created
+        return created
 
     @staticmethod
     def generate_actions(list_of_data: list[ElasticIndex]) -> dict:
@@ -84,14 +79,27 @@ class ESLoader:
             }
             yield {"_id": elem.id, "_source": record}
 
-    def load(self, record: list):
+    def load(self, state: State, record: list):
 
-        resp = helpers.bulk(
-                            client=self.es,
-                            index=self.index,
-                            actions=self.generate_actions(record),
-        )
+        try:
+            resp = helpers.bulk(
+                client=self.es,
+                index=self.index,
+                actions=self.generate_actions(record),
+            )
+
+            # отслеживаем дату - кладем ее в редис
+            state.set_state('modified', record[-1].modified)
+            logger.info(f'Сохранили в Redis состояние {state.get_state("modified")}')
+        except Exception as er:
+            logger.exception(er)
+            logger.error('Не удалось загрузить данные в ES')
 
     def close(self):
         """Func for correct closing."""
-        self.es.transport.connection_pool.close()
+        try:
+            self.es.transport.connection_pool.close()
+            logger.info('Соединение с ES закрыто')
+        except Exception as er:
+            logger.exception(er)
+            logger.error('Проблема с закрытием соединения ES')

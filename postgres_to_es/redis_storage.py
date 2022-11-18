@@ -1,16 +1,13 @@
 import abc
-import logging
-
 from datetime import datetime
 from json import JSONDecoder, JSONEncoder
-
 from typing import Any
 
-de = JSONDecoder()
-en = JSONEncoder()
+decoder = JSONDecoder()
+encoder = JSONEncoder()
 
 
-class BaseStorage:
+class BaseStorage(abc.ABC):
     @abc.abstractmethod
     def save_state(self, state: dict) -> None:
         pass
@@ -25,23 +22,17 @@ class RedisStorage(BaseStorage):
         self.redis = redis_adapter
 
     def save_state(self, state: dict) -> None:
-        self.redis.set('data', en.encode(state))
+        self.redis.set('data', encoder.encode(state))
 
     def retrieve_state(self) -> dict | None:
         res = self.redis.get('data')
         if res == 'null' or res is None:
-            self.redis.set('data', en.encode(None))
+            # self.redis.set('data', encoder.encode(None))
             return None
-        return de.decode(res)
+        return decoder.decode(res)
 
 
 class State:
-    """
-    Класс для хранения состояния при работе с данными, чтобы постоянно не перечитывать данные с начала.
-    Здесь представлена реализация с сохранением состояния в файл.
-    В целом ничего не мешает поменять это поведение на работу с БД или распределённым хранилищем.
-    """
-
     def __init__(self, storage: RedisStorage):
         self.storage = storage
         self.storage.retrieve_state()
@@ -49,10 +40,10 @@ class State:
     def set_state(self, key: str, value: Any) -> None:
         """Установить состояние для определённого ключа"""
         state = self.storage.retrieve_state()
-        try:
+        if state is not None:
             state[key] = value if type(value) is not datetime else str(value)
             self.storage.save_state(state)
-        except TypeError:
+        else:
             value = value if type(value) is not datetime else str(value)
             self.storage.save_state({key: value})
 
@@ -64,11 +55,4 @@ class State:
         except AttributeError:
             return None
 
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()
 

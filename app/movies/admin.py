@@ -1,9 +1,8 @@
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 from rangefilter.filters import DateRangeFilter
 
-from .models import Genre, Filmwork, GenreFilmwork, PersonFilmwork, Person
-
-from django.utils.translation import gettext_lazy as _
+from .models import Filmwork, Genre, GenreFilmwork, Person, PersonFilmwork
 
 
 class GenreFilmworkInline(admin.TabularInline):

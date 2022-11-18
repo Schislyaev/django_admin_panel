@@ -8,8 +8,9 @@ Date: 11/11/2023
 """
 
 
+from typing import Dict, Optional
+
 from pydantic import BaseModel, validator
-from typing import Optional, Dict
 
 
 class ElasticIndex(BaseModel):
@@ -24,6 +25,7 @@ class ElasticIndex(BaseModel):
     writers_names: Optional[list[str]]
     actors: Optional[list[Dict]]
     writers: Optional[list[Dict]]
+    modified: str
 
     @classmethod
     @validator('director')

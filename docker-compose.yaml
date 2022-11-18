@@ -10,16 +10,16 @@ services:
       - "8000:8000"
     depends_on:
       - db
+
   db:
     image: postgres:13-alpine
+    env_file:
+      - app/config/.env
     volumes:
       - ~/postgresql/data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=PG_DB_NAME
-      - POSTGRES_USER=DB_USER
-      - POSTGRES_PASSWORD=DB_PASSWORD
     ports:
       - "5432:5432"
+
   nginx:
     image: nginx:latest
     volumes:
@@ -30,6 +30,7 @@ services:
       - service
     ports:
       - "80:80"
+
   es:
     image: elasticsearch:7.9.1
     ports:
@@ -37,8 +38,8 @@ services:
     env_file:
       - app/config/.env
     environment:
-      - host=DB_HOST
       - discovery.type=single-node
+
   redis:
     image: redis
     ports:
@@ -46,9 +47,7 @@ services:
     env_file:
       - app/config/.env
     environment:
-      - host=DB_HOST
-      - password=None
-      - socket_timeout=None
       - decode_responses=True
+
 volumes:
   volume_static:

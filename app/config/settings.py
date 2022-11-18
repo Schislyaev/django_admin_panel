@@ -1,6 +1,6 @@
-from pathlib import Path
 import os
-from os.path import join, abspath
+from os.path import abspath, join
+from pathlib import Path
 
 from dotenv import load_dotenv
 from split_settings.tools import include

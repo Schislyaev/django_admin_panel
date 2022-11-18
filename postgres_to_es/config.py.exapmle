@@ -1,0 +1,12 @@
+# General settings
+PAGE_SIZE = 500
+HOST_LOCAL = '127.0.0.1'
+TIMEOUT = 10
+
+# Elastic settings
+INDEX_NAME = 'movies'
+ELASTIC_PORT = 9200
+
+# Redis settings
+REDIS_PORT = 6379
+REDIS_DB_NUMBER = 0

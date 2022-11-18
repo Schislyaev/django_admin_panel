@@ -6,48 +6,43 @@ Author: Petr Schislyaev
 Date: 14/11/2022
 """
 
+import config
 import contextlib
-import logging
 import os
-import psycopg2
-import backoff
 
+import backoff
+import psycopg2
+from dotenv import load_dotenv
+from elasticsearch import ElasticsearchException
+from es_loader import ESLoader
+from postgresextractor import PostgresExtractor
 from psycopg2 import Error
 from psycopg2.extensions import connection
-from dotenv import load_dotenv
-from redis import Redis, ConnectionError
-from elasticsearch import ElasticsearchException
-
-from postgresextractor import PostgresExtractor
-from es_loader import ESLoader
+from redis import ConnectionError, Redis
 from redis_storage import RedisStorage, State
-from util import sleep
+from util import sleep, log
 
 # logging setup
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = log(__name__)
 
-handler = logging.FileHandler(f"logs/{__name__}.log", mode='w')
-formatter = logging.Formatter("%(name)s %(asctime)s %(levelname)s %(message)s")
 
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-timeout = int(os.environ.get('TIMEOUT'))    # Время повтора сервиса в секундах
+TIMEOUT = config.TIMEOUT    # Время повтора сервиса в секундах
 
 
 class ETL:
     def __init__(self):
         load_dotenv('../app/config/.env')
 
-        db_name = os.environ.get('PG_DB_NAME')
-        user = os.environ.get('DB_USER')
-        password = os.environ.get('DB_PASSWORD')
-        self.host_local = os.environ.get('DB_HOST_LOCAL')
-        port = os.environ.get('DB_PORT')
-        self.PAGE_SIZE = int(os.environ.get('PAGE_SIZE'))
+        self.host_local = config.HOST_LOCAL      # os.environ.get('DB_HOST_LOCAL')
+        self.PAGE_SIZE = config.PAGE_SIZE       # int(os.environ.get('PAGE_SIZE'))
 
-        self.dsl = {'dbname': db_name, 'user': user, 'password': password, 'host': self.host_local, 'port': port}
+        self.dsl = {
+            'dbname': os.environ.get('PG_DB_NAME'),
+            'user': os.environ.get('DB_USER'),
+            'password': os.environ.get('DB_PASSWORD'),
+            'host': self.host_local,
+            'port': os.environ.get('DB_PORT')
+        }
 
         self.state = self.redis_connect()
 
@@ -60,10 +55,8 @@ class ETL:
         try:
             adapter = Redis(
                 host=self.host_local,
-                port=6379,
-                db=0,
-                password=None,
-                socket_timeout=None,
+                port=config.REDIS_PORT,       # int(os.environ.get('REDIS_PORT')),
+                db=config.REDIS_DB_NUMBER,     # int(os.environ.get('REDIS_DB_NUMBER')),
                 decode_responses=True
             )
             storage = RedisStorage(adapter)
@@ -100,7 +93,7 @@ class ETL:
             logger.exception(er)
             raise er
 
-    @sleep(timeout)
+    @sleep(TIMEOUT)
     def main(self):
 
         with contextlib.closing(self.postgres_connect()) as pg_conn, contextlib.closing(self.es_connect()) as es_conn:
@@ -109,7 +102,7 @@ class ETL:
             pg.extract()
             while data := pg.cursor.fetchmany(self.PAGE_SIZE):
                 res = pg.transform(data)
-                es_conn.load(res)
+                es_conn.load(self.state, res)
 
 
 def main():
